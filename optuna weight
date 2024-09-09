@@ -1,0 +1,38 @@
+class OptunaWeights:
+    def __init__(self, random_state):
+        self.study = None
+        self.weights = None
+        self.random_state = random_state
+
+    def _objective(self, trial, y_true, y_preds):
+        # Define the weights for the predictions from each model
+        weights = [trial.suggest_float(f"weight{n}", -1, 1) for n in range(len(y_preds))]
+
+        # Calculate the weighted prediction
+        weighted_pred = np.average(np.array(y_preds).T, axis=1, weights=weights)
+
+        # Calculate the MAE score for the weighted prediction
+        score = mean_absolute_error(y_true, weighted_pred)
+        return score
+
+    def fit(self, y_true, y_preds, n_trials=3000):
+        optuna.logging.set_verbosity(optuna.logging.ERROR)
+        sampler = optuna.samplers.CmaEsSampler(seed=self.random_state)
+        self.study = optuna.create_study(sampler=sampler, study_name="OptunaWeights", direction='minimize')
+        objective_partial = partial(self._objective, y_true=y_true, y_preds=y_preds)
+        self.study.optimize(objective_partial, n_trials=n_trials)
+        self.weights = [self.study.best_params[f"weight{n}"] for n in range(len(y_preds))]
+        weights_sum = sum(self.weights)
+        self.weights = [weight / weights_sum for weight in self.weights]
+
+    def predict(self, y_preds):
+        assert self.weights is not None, 'OptunaWeights error, must be fitted before predict'
+        weighted_pred = np.average(np.array(y_preds).T, axis=1, weights=self.weights)
+        return weighted_pred
+
+    def fit_predict(self, y_true, y_preds, n_trials=3000):
+        self.fit(y_true, y_preds, n_trials=n_trials)
+        return self.predict(y_preds)
+    
+    def weights(self):
+        return self.weights
