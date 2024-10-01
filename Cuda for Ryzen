@@ -1,0 +1,7 @@
+for Ryzen 
+
+ pip install plaidml-keras && plaidml-setup
+
+os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
+
+plaidbench keras mobilenet
