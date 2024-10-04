@@ -1,0 +1,44 @@
+<font color='green'><b>Полезные (и просто интересные) материалы:</b> \
+Для работы с текстами используют и другие подходы. Например, сейчас активно используются RNN (LSTM) и трансформеры (BERT и другие с улицы Сезам, например, ELMO). НО! Они не являются панацеей, не всегда они нужны, так как и TF-IDF или Word2Vec + модели из классического ML тоже могут справляться. \
+BERT тяжелый, существует много его вариаций для разных задач, есть готовые модели, есть надстройки над библиотекой transformers. Если, обучать BERT на GPU (можно в Google Colab или Kaggle), то должно быть побыстрее.\
+https://huggingface.co/transformers/model_doc/bert.html \
+https://colah.github.io/posts/2015-08-Understanding-LSTMs/ - Про LSTM \
+https://web.stanford.edu/~jurafsky/slp3/10.pdf - про энкодер-декодер модели, этеншены\
+https://pytorch.org/tutorials/beginner/transformer_tutorial.html - официальный гайд
+по трансформеру от создателей pytorch\
+Библиотеки: allennlp, fairseq, transformers, tensorflow-text — множествореализованных
+методов для трансформеров методов NLP \
+Word2Vec https://radimrehurek.com/gensim/models/word2vec.html
+
+<font color='green'>Пример BERT с GPU:
+```python
+%%time
+from tqdm import notebook
+batch_size = 2 # для примера возьмем такой батч, где будет всего две строки датасета
+embeddings = []
+model.cuda()   # закидываем модель на GPU
+for i in notebook.tqdm(range(input_ids.shape[0] // batch_size)):
+        batch = torch.LongTensor(input_ids[batch_size*i:batch_size*(i+1)]).cuda() # закидываем тензор на GPU
+        attention_mask_batch = torch.LongTensor(attention_mask[batch_size*i:batch_size*(i+1)]).cuda()
+
+        with torch.no_grad():
+            batch_embeddings = model(batch, attention_mask=attention_mask_batch)
+
+        embeddings.append(batch_embeddings[0][:,0,:].cpu().numpy()) # перевод обратно на проц, чтобы в нумпай кинуть
+        del batch
+        del attention_mask_batch
+        del batch_embeddings
+
+features = np.concatenate(embeddings)
+```
+Можно сделать предварительную проверку на наличие GPU.\
+Например, так: ```device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")```\
+Тогда вместо .cuda() нужно писать .to(device)
+
+Если понравилась работа с текстами, то можешь посмотреть очень интересный (но очень-очень сложный) курс лекций: https://github.com/yandexdataschool/nlp_course .
+
+
+NLP от Samsung https://stepik.org/course/54098/promo \
+NLP от Huawei https://ods.ai/tracks/nlp-course-spring-2024 \
+Transformers от Hugging Face https://huggingface.co/learn/nlp-course/ru/chapter1/1
+</font>
