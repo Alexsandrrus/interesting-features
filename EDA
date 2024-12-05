@@ -1,0 +1,165 @@
+def plot_numerical_features(df):
+    num_features = df.select_dtypes(include=[np.number]).columns
+    ncols = 2
+    nrows = (len(num_features) + ncols - 1) // ncols
+
+    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(12, 5 * nrows))
+    axes = axes.flatten()
+
+    for i, feature in enumerate(num_features):
+        sns.histplot(df[feature], bins=30, kde=True, ax=axes[i])
+        axes[i].set_title(f'Distribution of {feature}')
+    
+    plt.tight_layout()
+    plt.show()
+
+def plot_numerical_boxplots(df):
+    num_features = df.select_dtypes(include=[np.number]).columns
+    ncols = 2
+    nrows = (len(num_features) + ncols - 1) // ncols
+
+    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(12, 5 * nrows))
+    axes = axes.flatten()
+
+    for i, feature in enumerate(num_features):
+        sns.boxplot(x=df[feature], ax=axes[i])
+        axes[i].set_title(f'Boxplot of {feature}')
+    
+    plt.tight_layout()
+    plt.show()
+
+def plot_qq_plot(df):
+    num_features = df.select_dtypes(include=[np.number]).columns
+    ncols = 2
+    nrows = (len(num_features) + ncols - 1) // ncols
+
+    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(12, 5 * nrows))
+    axes = axes.flatten()
+
+    for i, feature in enumerate(num_features):
+        stats.probplot(df[feature], dist="norm", plot=axes[i])
+        axes[i].set_title(f'QQ Plot of {feature}')
+    
+    plt.tight_layout()
+    plt.show()
+
+def plot_correlation_matrix(df, method='spearman'):
+    num_df = df.select_dtypes(include=[np.number])
+    
+    corr = num_df.corr(method=method)
+    plt.figure(figsize=(14, 10))
+    sns.heatmap(corr, annot=True, fmt=".2f", cmap='coolwarm', square=True, cbar_kws={"shrink": .8})
+    plt.title(f'Correlation Matrix ({method.capitalize()} Correlation)')
+    plt.show()
+
+def plot_pairplot(df):
+    num_features = df.select_dtypes(include=[np.number]).columns
+    sns.pairplot(df[num_features])
+    plt.show()
+
+def plot_categorical_features(df, ncols=2, top_n=None):
+    cat_features = df.select_dtypes(include=[object]).columns
+    nrows = (len(cat_features) + ncols - 1) // ncols
+
+    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(12, 5 * nrows))
+    axes = axes.flatten()
+
+    for i, feature in enumerate(cat_features):
+        if top_n is not None:
+            # Получаем топ-N категорий
+            top_categories = df[feature].value_counts().nlargest(top_n).index
+            sns.countplot(data=df[df[feature].isin(top_categories)], y=feature, ax=axes[i])  # Используем y для горизонтального графика
+        else:
+            sns.countplot(data=df, y=feature, ax=axes[i])  # Используем y для горизонтального графика
+        
+        axes[i].set_title(f'Count of {feature}')
+        axes[i].tick_params(axis='y', rotation=0)  # Поворачиваем метки по оси Y для лучшей читаемости
+
+    # Убираем пустые подграфики, если они есть
+    for j in range(i + 1, len(axes)):
+        fig.delaxes(axes[j])
+
+    plt.tight_layout()
+    plt.show()
+
+    
+def day_part(hour):
+    if hour in [4,5]:
+        return 1
+    elif hour in [6,7]:
+        return 2
+    elif hour in [8,9,10]:
+        return 3
+    elif hour in [11,12,13]:
+        return 4
+    elif hour in [14,15,16]:
+        return 5
+    elif hour in [17, 18,19]:
+        return 6
+    elif hour in [20, 21, 22]:
+        return 7
+    elif hour in [23,0,1,2,3]:
+        return 0
+
+def PolynomialFeatures_labeled(input_df,power):
+   
+    poly = preprocessing.PolynomialFeatures(power)
+    output_nparray = poly.fit_transform(input_df)
+    powers_nparray = poly.powers_
+
+    input_feature_names = list(input_df.columns)
+    target_feature_names = ["Constant Term"]
+    for feature_distillation in powers_nparray[1:]:
+        intermediary_label = ""
+        final_label = ""
+        for i in range(len(input_feature_names)):
+            if feature_distillation[i] == 0:
+                continue
+            else:
+                variable = input_feature_names[i]
+                power = feature_distillation[i]
+                intermediary_label = "%s+%d" % (variable,power)
+                if final_label == "":         #If the final label isn't yet specified
+                    final_label = intermediary_label
+                else:
+                    final_label = final_label + "x" + intermediary_label
+        target_feature_names.append(final_label)
+    output_df = pd.DataFrame(output_nparray, columns = target_feature_names)
+    return output_df
+
+def variance_threshold(df,th):
+    var_thres=VarianceThreshold(threshold=th)
+    var_thres.fit(df)
+    new_cols = var_thres.get_support()
+    return df.iloc[:,new_cols]
+   
+def optimize_memory_usage(df, print_size=True):
+# Function optimizes memory usage in dataframe.
+
+# Types for optimization.
+    numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
+    # Memory usage size before optimize (Mb).
+    before_size = df.memory_usage().sum() / 1024**2    
+    for column in df.columns:
+        column_type = df[column].dtypes
+        if column_type in numerics:
+            column_min = df[column].min()
+            column_max = df[column].max()
+            if str(column_type).startswith('int'):
+                if column_min > np.iinfo(np.int8).min and column_max < np.iinfo(np.int8).max:
+                    df[column] = df[column].astype(np.int8)
+                elif column_min > np.iinfo(np.int16).min and column_max < np.iinfo(np.int16).max:
+                    df[column] = df[column].astype(np.int16)
+                elif column_min > np.iinfo(np.int32).min and column_max < np.iinfo(np.int32).max:
+                    df[column] = df[column].astype(np.int32)
+                elif column_min > np.iinfo(np.int64).min and column_max < np.iinfo(np.int64).max:
+                    df[column] = df[column].astype(np.int64)  
+            else:
+                if column_min > np.finfo(np.float32).min and column_max < np.finfo(np.float32).max:
+                    df[column] = df[column].astype(np.float32)
+                else:
+                    df[column] = df[column].astype(np.float64)    
+    # Memory usage size after optimize (Mb).
+    after_size = df.memory_usage().sum() / 1024**2
+    if print_size: print('Memory usage size: before {:5.4f} Mb - after {:5.4f} Mb ({:.1f}%).'.format(before_size, after_size, 100 * (before_size - after_size) / before_size))
+    return df
